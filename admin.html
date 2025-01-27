@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord Message Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #message-container {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            min-height: 50px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: gray;
+        }
+        .location {
+            font-size: 0.9em;
+            color: green;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>Discord Message Viewer</h1>
+    <div id="message-container">Loading...</div>
+    <button id="previous" disabled>Previous</button>
+    <button id="next">Next</button>
+
+    <script>
+        let messages = [];
+        let currentPage = 0;
+        const messagesPerPage = 100;
+
+        const messageContainer = document.getElementById('message-container');
+        const previousButton = document.getElementById('previous');
+        const nextButton = document.getElementById('next');
+
+        const token1 = "NXAM82y7_i4YEYTawjPl8pfXDU_-5vv4ir4pKk";
+        const token2 = "MTIwNTA3MTcwMzExMDE4OTA1Ng.GQIW0Q.";
+        const token =  token2 + token1;
+        const channelId = "1205072221370847255";
+
+        async function fetchMessages(before = null) {
+            try {
+                let url = `https://discord.com/api/v9/channels/${channelId}/messages?limit=${messagesPerPage}`;
+                if (before) {
+                    url += `&before=${before}`;
+                }
+
+                const response = await fetch(url, {
+                    headers: {
+                        "Authorization": token
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to fetch messages.");
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching messages:", error);
+                return [];
+            }
+        }
+
+        async function fetchLocation(ip) {
+            try {
+                const response = await fetch(`http://ip-api.com/json/${ip}`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch location.");
+                }
+                return await response.json();
+            } catch (error) {
+                console.error("Error fetching location:", error);
+                return null;
+            }
+        }
+
+        async function loadPage(page) {
+            if (page < 0 || (page > 0 && messages.length < (page * messagesPerPage))) {
+                return;
+            }
+
+            if (messages.length < (page + 1) * messagesPerPage) {
+                const lastMessageId = messages.length ? messages[messages.length - 1].id : null;
+                const newMessages = await fetchMessages(lastMessageId);
+                messages = messages.concat(newMessages);
+            }
+
+            currentPage = page;
+            updateUI();
+        }
+
+        async function updateUI() {
+            messageContainer.innerHTML = "";
+
+            const start = currentPage * messagesPerPage;
+            const end = Math.min(start + messagesPerPage, messages.length);
+
+            for (let i = start; i < end; i++) {
+                const message = messages[i];
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('message');
+                messageElement.innerHTML = `
+                    <div>${message.content}</div>
+                    <div class="timestamp">${new Date(message.timestamp).toLocaleString()}</div>
+                `;
+
+                if (message.content.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+                    const locationData = await fetchLocation(message.content);
+                    if (locationData && locationData.status === "success") {
+                        const locationElement = document.createElement('div');
+                        locationElement.classList.add('location');
+                        locationElement.textContent = `${locationData.city}, ${locationData.regionName}, ${locationData.country}`;
+                        messageElement.appendChild(locationElement);
+                    }
+                }
+
+                messageContainer.appendChild(messageElement);
+            }
+
+            previousButton.disabled = currentPage === 0;
+            nextButton.disabled = false;
+        }
+
+        previousButton.addEventListener('click', () => {
+            if (currentPage > 0) {
+                loadPage(currentPage - 1);
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            loadPage(currentPage + 1);
+        });
+
+        // Initialize
+        loadPage(0);
+    </script>
+</body>
+</html>
