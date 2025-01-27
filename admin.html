@@ -90,7 +90,11 @@
 
         async function fetchLocation(ip) {
             try {
-                const response = await fetch(`http://ip-api.com/json/${ip}`);
+                
+        
+                const targetUrl = `https://ipinfo.io/${ip}/json`;
+
+                const response = await fetch(targetUrl);
                 if (!response.ok) {
                     throw new Error("Failed to fetch location.");
                 }
@@ -133,10 +137,10 @@
 
                 if (message.content.match(/^\d+\.\d+\.\d+\.\d+$/)) {
                     const locationData = await fetchLocation(message.content);
-                    if (locationData && locationData.status === "success") {
+                    if (locationData) {
                         const locationElement = document.createElement('div');
                         locationElement.classList.add('location');
-                        locationElement.textContent = `${locationData.city}, ${locationData.regionName}, ${locationData.country}`;
+                        locationElement.textContent = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
                         messageElement.appendChild(locationElement);
                     }
                 }
